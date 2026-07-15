@@ -155,7 +155,7 @@ def process_timetables(folder_path: str):
             all_schedules[name] = extract_matrix_via_text(os.path.join(folder_path, filename), name)
     return all_schedules
 
-def generate_heatmap(combined_results):
+def generate_heatmap(combined_results: dict):
     days = ["MON", "TUE", "WED", "THU", "FRI"]
     time_slots = [
         "08:00", "08:55", "09:50", "10:45", "11:40", 
@@ -166,6 +166,8 @@ def generate_heatmap(combined_results):
     heatmap_matrix = np.zeros((5, 11))
     for matrix in combined_results.values():
         heatmap_matrix += matrix
+
+    people = ", ".join(name for name in combined_results)
 
     plt.figure(figsize=(14, 6))
     colors = ["#ff4d4d", "#ffdb4d", "#4dff4d"] 
@@ -185,7 +187,7 @@ def generate_heatmap(combined_results):
 
     plt.xticks(range(11), time_slots, fontsize=10, rotation=15)
     plt.yticks(range(5), days, fontsize=10, fontweight='bold')
-    plt.title("Group Free Time Heatmap", fontsize=14, pad=20, fontweight='bold')
+    plt.title(f"Group Free Time Heatmap - {people}", fontsize=14, pad=20, fontweight='bold')
     
     plt.tight_layout()
     plt.savefig('group_heatmap.png', dpi=300)
