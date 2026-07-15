@@ -1,6 +1,6 @@
 ---
 
-# 🗓️ Group Timetable Heatmap Generator
+# 🗓️ ScheduleSync
 
 This tool uses OpenCV and Tesseract OCR to extract schedule slots from university timetable screenshots, aggregates individual schedules, and generates a visual availability heatmap to help groups find the perfect common free time.
 
