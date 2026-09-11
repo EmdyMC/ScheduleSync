@@ -156,41 +156,89 @@ def process_timetables(folder_path: str):
     return all_schedules
 
 def generate_heatmap(combined_results: dict):
+    import textwrap
+
     days = ["MON", "TUE", "WED", "THU", "FRI"]
     time_slots = [
-        "08:00", "08:55", "09:50", "10:45", "11:40", 
+        "08:00", "08:55", "09:50", "10:45", "11:40",
         "12:35", "Lunch", "14:00", "14:55", "15:50", "16:45"
     ]
-    
-    total_people = len(combined_results)
+
+    names = list(combined_results.keys())
+    total_people = len(names)
+
+    # Free-count matrix (for coloring) and per-cell list of busy people (for labels)
     heatmap_matrix = np.zeros((5, 11))
-    for matrix in combined_results.values():
+    busy_names_grid = [[[] for _ in range(11)] for _ in range(5)]
+    for name, matrix in combined_results.items():
         heatmap_matrix += matrix
+        for d in range(5):
+            for t in range(11):
+                if matrix[d, t] == 0:
+                    busy_names_grid[d][t].append(name)
 
-    people = ", ".join(name for name in combined_results)
+    people_str = ", ".join(names)
 
-    plt.figure(figsize=(14, 6))
-    colors = ["#ff4d4d", "#ffdb4d", "#4dff4d"] 
-    cmap = mcolors.LinearSegmentedColormap.from_list("availability", colors, N=total_people+1)
-    
-    imshow_obj = plt.imshow(heatmap_matrix, cmap=cmap, aspect='auto', vmin=0, vmax=total_people)
-    cbar = plt.colorbar(imshow_obj, ticks=range(total_people + 1))
-    cbar.set_label('Number of People Free', rotation=270, labelpad=15, fontsize=12, fontweight='bold')
-    
-    for y in range(5):
-        for x in range(11):
-            plt.text(x, y, f"{int(heatmap_matrix[y, x])}/{total_people}", 
-                     ha="center", va="center", color="black", fontweight="bold", fontsize=10)
+    # --- Style ---
+    plt.rcParams["font.family"] = "sans-serif"
+    fig, ax = plt.subplots(figsize=(16, 7.5))
 
-    plt.gca().xaxis.tick_top()
-    plt.gca().xaxis.set_label_position('top')
+    # Smooth, calmer red -> amber -> green gradient
+    colors = ["#e04b4b", "#f2a93c", "#f5d76e", "#8fd35c", "#3fb950"]
+    cmap = mcolors.LinearSegmentedColormap.from_list("availability", colors, N=256)
 
-    plt.xticks(range(11), time_slots, fontsize=10, rotation=15)
-    plt.yticks(range(5), days, fontsize=10, fontweight='bold')
-    plt.title(f"Group Free Time Heatmap - {people}", fontsize=14, pad=20, fontweight='bold')
-    
+    im = ax.imshow(heatmap_matrix, cmap=cmap, aspect="auto", vmin=0, vmax=total_people)
+
+    # Gridlines between cells for a cleaner, table-like look
+    ax.set_xticks(np.arange(-0.5, 11, 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, 5, 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=2.5)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    # Cell labels: free count on top, busy names (wrapped) below
+    for d in range(5):
+        for t in range(11):
+            free_count = int(heatmap_matrix[d, t])
+            bg_frac = free_count / total_people if total_people else 0
+            text_color = "white" if bg_frac < 0.3 or bg_frac > 0.9 else "#222222"
+
+            busy = busy_names_grid[d][t]
+            if time_slots[t] == "Lunch":
+                sub_text = ""
+            elif not busy:
+                sub_text = "all free"
+            elif len(busy) == total_people:
+                sub_text = "all busy"
+            else:
+                sub_text = textwrap.fill(", ".join(busy), width=14)
+
+            ax.text(t, d - 0.16, f"{free_count}/{total_people}",
+                     ha="center", va="center", color=text_color,
+                     fontweight="bold", fontsize=11)
+            if sub_text:
+                ax.text(t, d + 0.22, sub_text,
+                         ha="center", va="center", color=text_color,
+                         fontsize=7.5, linespacing=1.3)
+
+    cbar = fig.colorbar(im, ax=ax, ticks=range(total_people + 1), pad=0.015)
+    cbar.set_label("Number of People Free", rotation=270, labelpad=18, fontsize=12, fontweight="bold")
+    cbar.outline.set_visible(False)
+
+    ax.xaxis.tick_top()
+    ax.xaxis.set_label_position("top")
+    ax.set_xticks(range(11))
+    ax.set_xticklabels(time_slots, fontsize=10.5, rotation=15)
+    ax.set_yticks(range(5))
+    ax.set_yticklabels(days, fontsize=11, fontweight="bold")
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    ax.set_title(f"Group Free Time Heatmap\n{people_str}",
+                 fontsize=15, pad=22, fontweight="bold")
+
     plt.tight_layout()
-    plt.savefig('group_heatmap.png', dpi=300)
+    plt.savefig("group_heatmap.png", dpi=300, bbox_inches="tight")
     plt.show()
 
 # --- RUN ---
