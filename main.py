@@ -3,6 +3,8 @@ import numpy as np
 import pytesseract
 import os
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
@@ -107,8 +109,10 @@ def extract_matrix_via_text(image_path: str, name: str):
     grid_mask = cv2.threshold(grid_mask, 0, 255, cv2.THRESH_BINARY)[1]
     contours, _ = cv2.findContours(grid_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    found_busy_slots = set()
-
+    # --- Pass 1 (fast, sequential): crop + preprocess every candidate cell ---
+    # Pure numpy/OpenCV work - nothing to gain from threading it.
+    # The real bottleneck is the tesseract subprocess call below.
+    cell_images = []
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         if 200 < (w * h) < 200000 and w > 20 and h > 20:
@@ -116,23 +120,33 @@ def extract_matrix_via_text(image_path: str, name: str):
             cropped = img[y+margin : y+h-margin, x+margin : x+w-margin]
             if cropped.size == 0:
                 continue
-                
+
             resized = cv2.resize(cropped, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
             cell_thresh = cv2.threshold(cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-            
-            try:
-                cell_text = pytesseract.image_to_string(cell_thresh, config='--psm 6').strip().upper()
-            except Exception:
-                cell_text = ""
-            
-            cleaned_text = " ".join(cell_text.split())
-            
-            # If the block has text and looks like an actual course block
-            if len(cleaned_text) > 8:
-                # Scan the text for any known slot name using regex word boundaries
-                for known_slot in ALL_KNOWN_SLOTS:
-                    if re.search(rf'\b{known_slot}\b', cleaned_text):
-                        found_busy_slots.add(known_slot)
+            cell_images.append(cell_thresh)
+
+    # --- Pass 2 (slow, parallel): OCR each candidate cell ---
+    # pytesseract shells out to the tesseract binary as a subprocess, so it releases
+    # the GIL while waiting - a thread pool gives real parallelism here.
+    def _ocr_cell(cell_thresh):
+        try:
+            return pytesseract.image_to_string(cell_thresh, config='--psm 6').strip().upper()
+        except Exception:
+            return ""
+
+    found_busy_slots = set()
+    if cell_images:
+        max_workers = min(16, len(cell_images))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            for cell_text in pool.map(_ocr_cell, cell_images):
+                cleaned_text = " ".join(cell_text.split())
+
+                # If the block has text and looks like an actual course block
+                if len(cleaned_text) > 8:
+                    # Scan the text for any known slot name using regex word boundaries
+                    for known_slot in ALL_KNOWN_SLOTS:
+                        if re.search(rf'\b{known_slot}\b', cleaned_text):
+                            found_busy_slots.add(known_slot)
 
     # Cross-reference found slots with the master template to build the matrix
     for d_idx, day_slots in enumerate(SLOT_TEMPLATE):
@@ -145,14 +159,40 @@ def extract_matrix_via_text(image_path: str, name: str):
     return person_matrix
 
 def process_timetables(folder_path: str):
-    all_schedules = {}
     if not os.path.exists(folder_path):
         return None
-    for filename in os.listdir(folder_path):
-        if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+
+    image_files = [
+        f for f in os.listdir(folder_path)
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+    ]
+    if not image_files:
+        return {}
+
+    all_schedules = {}
+    start = time.time()
+
+    # Each person's image is independent, and extract_matrix_via_text spends almost
+    # all its time waiting on tesseract subprocess calls, so images are processed
+    # concurrently rather than one after another.
+    max_workers = min(8, len(image_files))
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        future_to_name = {}
+        for filename in image_files:
             name, _ = os.path.splitext(filename)
-            print(f"-- Processing {name}...")
-            all_schedules[name] = extract_matrix_via_text(os.path.join(folder_path, filename), name)
+            print(f"-- Queuing {name}...")
+            future = pool.submit(extract_matrix_via_text, os.path.join(folder_path, filename), name)
+            future_to_name[future] = name
+
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                all_schedules[name] = future.result()
+            except Exception as e:
+                print(f"   ! Failed to process {name}: {e}")
+
+    print(f"Processed {len(all_schedules)} timetable(s) in {time.time() - start:.1f}s "
+          f"({max_workers} worker threads).")
     return all_schedules
 
 def generate_heatmap(combined_results: dict):
@@ -204,7 +244,7 @@ def generate_heatmap(combined_results: dict):
 
             busy = busy_names_grid[d][t]
             if time_slots[t] == "Lunch":
-                sub_text = ""
+                sub_text = textwrap.fill(", ".join(busy), width=14)
             elif not busy:
                 sub_text = "all free"
             elif len(busy) == total_people:
@@ -212,11 +252,11 @@ def generate_heatmap(combined_results: dict):
             else:
                 sub_text = textwrap.fill(", ".join(busy), width=14)
 
-            ax.text(t, d - 0.16, f"{free_count}/{total_people}",
+            ax.text(t, d - 0.25, f"{free_count}/{total_people}",
                      ha="center", va="center", color=text_color,
                      fontweight="bold", fontsize=11)
             if sub_text:
-                ax.text(t, d + 0.22, sub_text,
+                ax.text(t, d + 0.15, sub_text,
                          ha="center", va="center", color=text_color,
                          fontsize=7.5, linespacing=1.3)
 
