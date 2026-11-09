@@ -149,8 +149,11 @@ def extract_matrix_via_text(image_path: str, name: str):
                             found_busy_slots.add(known_slot)
 
     # Cross-reference found slots with the master template to build the matrix
+    LUNCH_TIME_INDEX = 6
     for d_idx, day_slots in enumerate(SLOT_TEMPLATE):
         for t_idx, time_slots in enumerate(day_slots):
+            if t_idx == LUNCH_TIME_INDEX:
+                continue
             # If ANY of the slot names mapped to this specific time were found as busy in the OCR scan
             if any(slot in found_busy_slots for slot in time_slots):
                 person_matrix[d_idx, t_idx] = 0  # Mark as Busy
@@ -244,7 +247,7 @@ def generate_heatmap(combined_results: dict):
 
             busy = busy_names_grid[d][t]
             if time_slots[t] == "Lunch":
-                sub_text = textwrap.fill(", ".join(busy), width=14)
+                sub_text = "Lunch"
             elif not busy:
                 sub_text = "all free"
             elif len(busy) == total_people:
@@ -252,11 +255,11 @@ def generate_heatmap(combined_results: dict):
             else:
                 sub_text = textwrap.fill(", ".join(busy), width=14)
 
-            ax.text(t, d - 0.25, f"{free_count}/{total_people}",
+            ax.text(t, d - 0.35, f"{free_count}/{total_people}",
                      ha="center", va="center", color=text_color,
                      fontweight="bold", fontsize=11)
             if sub_text:
-                ax.text(t, d + 0.15, sub_text,
+                ax.text(t, d + 0.1, sub_text,
                          ha="center", va="center", color=text_color,
                          fontsize=7.5, linespacing=1.3)
 
@@ -282,7 +285,8 @@ def generate_heatmap(combined_results: dict):
     plt.show()
 
 # --- RUN ---
-folder = 'timetables'
-results = process_timetables(folder)
-if results:
-    generate_heatmap(results)
+if __name__ == '__main__':
+    folder = 'timetables'
+    results = process_timetables(folder)
+    if results:
+        generate_heatmap(results)

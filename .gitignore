@@ -1,3 +1,41 @@
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Netlify Build Artifacts
+.netlify/
+
+# Local database journals & cache (preserve pre-seeded schedulesync.db if needed)
+*.db-journal
+*.db-wal
+*.db-shm
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local environment & secrets
+.env
+.env.local
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# User uploaded raw images (keep .gitkeep)
+uploads/*
+!uploads/.gitkeep
 /timetables
 /others
+
+# Local testing images & artifacts
 group_heatmap.png

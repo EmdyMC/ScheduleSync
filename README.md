@@ -1,102 +1,128 @@
+# 🗓️ ScheduleSync: Academic Timetable Aggregator & Common Free Time Analyzer
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg?style=flat&logo=supabase&logoColor=white)](https://supabase.com)
+[![Netlify](https://img.shields.io/badge/Netlify-Ready-00C7B7.svg?style=flat&logo=netlify&logoColor=white)](https://www.netlify.com)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=flat&logo=docker&logoColor=white)](https://www.docker.com)
+
+**ScheduleSync** is a full-stack web application designed for university students to aggregate academic timetables, identify overlapping courses, and calculate real-time common free times for project teams, study groups, and clubs.
+
 ---
 
-# 🗓️ ScheduleSync
+## 🌟 Key Features
 
-This tool uses OpenCV and Tesseract OCR to extract schedule slots from VIT's VTOP timetable screenshots, aggregates individual schedules, and generates a visual availability heatmap to help groups find the perfect common free time.
+- 🔐 **Secure Authentication:** JWT and bcrypt-hashed authentication with customizable student profiles (registration number, campus, avatars).
+- 📅 **Interactive Schedule Editor:**
+  - **Visual 5×11 Slot Grid:** Instant slot toggling (Mon–Fri, 8:00 AM – 5:35 PM) with standard university slot codes (`A1`, `B1`, `L1–L58`), and bulk actions (*Mark All Free*, *Mark All Busy*).
+  - **Computer Vision OCR Uploader:** Upload timetable screenshots; automatically scans course cells using OpenCV and Tesseract OCR to populate the matrix.
+- 👥 **Student Social Network:**
+  - Real-time search by username, full name, or registration number.
+  - Send, accept, and manage friend requests.
+  - Multi-select friend comparison to immediately view shared availability.
+- 👥 **Project Teams & Study Groups:**
+  - Create study groups with auto-generated invite codes (e.g. `HACK26`, `STUDY4`).
+  - Manage member roles (Admin / Member).
+  - Generate aggregated group availability heatmaps with 100% free meeting windows.
+- 🔥 **Availability Heatmap Engine:**
+  - 5-stop color gradient indicating free/busy ratios (Green = 100% Free, Amber = Partial, Red = All Busy).
+  - Cell click inspection modal showing available vs. in-class members.
+  - Automatic best meeting slot recommendation banner.
+- 🔗 **Public Share Links:** Generate tokenized public links to share read-only heatmaps with external collaborators (`/share/<token>`).
+- 🗄️ **Production-Ready Database:** Native support for **Supabase (PostgreSQL)** with seamless local SQLite fallback for offline development.
 
 ---
 
-## 🛠️ Prerequisites & Setup
+## 🚀 Quickstart & Local Setup
 
-Before running the script, you need to install the external OCR engine and the correct Python libraries.
-
-### 1. Install Tesseract OCR Engine
-
-Because this project relies on **PyTesseract** to read text from images, you must install the actual Tesseract engine on your machine:
-
-* **Windows:** Download and run the installer from [UB Mannheim Tesseract](https://www.google.com/search?q=https://github.com/UB-Mannheim/tesseract/wiki). By default, it installs to `C:\Program Files\Tesseract-OCR\tesseract.exe`.
-* **macOS:** Install via Homebrew:
+### 1. Install Dependencies
 ```bash
-brew install tesseract
-
+pip install -r requirements.txt
 ```
 
+### 2. Configure Environment (Optional)
+To connect to **Supabase (PostgreSQL)**, set `DATABASE_URL` in your environment or a `.env` file:
+```env
+DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+SECRET_KEY=your-production-secret-jwt-key
+```
+*(If `DATABASE_URL` is omitted, the app will automatically use a local SQLite database).*
 
-* **Linux (Ubuntu/Debian):** Install via apt:
+### 3. Seed Database with Realistic Data
 ```bash
-sudo apt update
-sudo apt install tesseract-ocr
-
+python database/seed_data.py
 ```
 
-
-
-### 2. Install Python Dependencies
-
-Run the following command in your terminal to install the required libraries.
-
-> 💡 *Note: The core imaging library is packaged as `opencv-python` (not `cv2`), and `re` is built right into Python, so you don't need to install it!*
-
+### 4. Run the Application
 ```bash
-pip install opencv-python pytesseract numpy matplotlib
+python run.py
+```
 
+- **Web Dashboard:** Open [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **API Swagger Documentation:** Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+---
+
+## ☁️ Deployment
+
+### 1. Supabase (Database)
+1. Create a project at [supabase.com](https://supabase.com).
+2. Run [`database/supabase_schema.sql`](file:///database/supabase_schema.sql) in the Supabase SQL Editor.
+3. Copy your project connection URI from **Project Settings > Database**.
+4. See [docs/SUPABASE_SETUP.md](file:///docs/SUPABASE_SETUP.md) for full instructions.
+
+### 2. Netlify Deployment
+ScheduleSync is configured with [`netlify.toml`](file:///netlify.toml) and [`netlify/functions/api.py`](file:///netlify/functions/api.py):
+1. Connect your repository to Netlify.
+2. In **Site configuration > Environment variables**, add `DATABASE_URL` pointing to your Supabase instance and `SECRET_KEY`.
+3. Deploy! Netlify will automatically build the site and deploy FastAPI via the Mangum serverless adapter.
+4. See [docs/NETLIFY_DEPLOYMENT.md](file:///docs/NETLIFY_DEPLOYMENT.md) for details.
+
+### 3. Docker / Cloud Containers (Render, Railway, Fly.io)
+Deploy using the included [`Dockerfile`](file:///Dockerfile):
+```bash
+docker build -t schedulesync .
+docker run -p 8000:8000 -e DATABASE_URL="<your-supabase-url>" schedulesync
 ```
 
 ---
 
-## ⚙️ Configuration
-
-Open `main.py` in your code editor and check the following two items:
-
-1. **Tesseract Path (Windows Users):**
-Ensure line 10 points directly to your Tesseract installation executable:
-```python
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-```
-
-
-*(Mac/Linux users can typically comment this line out, as the system binary path is automatically discovered).*
-2. **Slot Template Customization:**
-The `SLOT_TEMPLATE` matrix is currently configured for a standard university day/night slot system (e.g., `A1`, `F1`, `LUNCH`). If your university uses a different coding scheme, simply edit the string arrays inside `SLOT_TEMPLATE` to match your campus codes.
-
----
-
-## 🚀 How to Use
-
-### 1. Structure Your Directory
-
-Create a folder named `timetables` in the exact same directory where `main.py` lives. Drop all group member timetable screenshots into it. Use the filename as the person's name (e.g., `Alice.png`, `Bob.jpg`).
-
-Your repository structure should look like this:
+## 📁 Project Structure
 
 ```text
-your-project-folder/
-├── timetables/
-│   ├── Alice.png
-│   ├── Bob.jpg
-│   └── Charlie.jpeg
-└── main.py
-
-```
-
-### 2. Run the Script
-
-Execute the main file from your terminal:
-
-```bash
-python main.py
-
+ScheduleSync/
+├── app/
+│   ├── config.py           # Configuration, Supabase detection & slot matrices
+│   ├── database.py         # Database connection proxy (Supabase PG + SQLite)
+│   ├── auth.py             # Bcrypt hashing & JWT token dependencies
+│   ├── schemas.py          # Pydantic validation models
+│   ├── ocr_service.py      # OpenCV & Tesseract OCR timetable parser
+│   ├── heatmap_service.py  # Free-time relational aggregation engine
+│   ├── routers/            # Modular FastAPI route controllers
+│   ├── static/             # Frontend styles & Vanilla JS client
+│   └── templates/          # Jinja2 HTML templates (Dashboard & Share)
+├── database/
+│   ├── supabase_schema.sql # Production Supabase PostgreSQL schema
+│   ├── schema.sql          # Local SQLite development schema
+│   ├── seed_data.py        # Database seeder with realistic test schedules
+│   └── precomputed_timetables.json # Precomputed timetable matrices
+├── docs/
+│   ├── SUPABASE_SETUP.md      # Supabase setup & connection guide
+│   ├── NETLIFY_DEPLOYMENT.md  # Step-by-step Netlify deployment guide
+│   └── AWS_DEPLOYMENT.md      # AWS production reference
+├── netlify/
+│   └── functions/
+│       └── api.py          # Mangum ASGI adapter for Netlify Functions
+├── Dockerfile              # Production container with OCR pre-installed
+├── netlify.toml            # Netlify build configuration & redirect rules
+├── Procfile                # Heroku / Railway process definition
+├── render.yaml             # Render infrastructure specification
+├── requirements.txt        # Python package dependencies
+├── run.py                  # Server entrypoint
+└── README.md
 ```
 
 ---
 
-## 📊 Expected Output
-
-Upon a successful run, the script will:
-
-1. Print processing confirmations in your terminal for each file found.
-2. Launch a popup window displaying an interactive matplotlib heatmap.
-3. Automatically save a high-resolution version of the map as **`group_heatmap.png`** in your project directory.
-
-Green blocks signify highly available slots, while orange/red blocks indicate heavy scheduling conflicts!
+## 📜 License
+Distributed under the MIT License.

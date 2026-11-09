@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Availability Heatmap - ScheduleSync</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-[#090d16] text-slate-100 antialiased min-h-screen flex flex-col p-4 sm:p-6">
+
+    <div class="max-w-6xl w-full mx-auto space-y-4">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-black text-sm">
+                    SS
+                </div>
+                <div>
+                    <h1 id="share-title" class="text-sm font-bold text-white leading-tight">Shared Availability Heatmap</h1>
+                    <p class="text-[10px] text-slate-400">ScheduleSync Read-Only View</p>
+                </div>
+            </div>
+            <a href="/" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-all">
+                Open Dashboard &rarr;
+            </a>
+        </div>
+
+        <!-- Participants Card -->
+        <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Participants:</span>
+                <div id="share-participants-list" class="flex flex-wrap gap-1 items-center"></div>
+            </div>
+            <div class="text-xs text-slate-400">
+                100% Free Slots: <strong id="share-free-count" class="text-emerald-400 font-extrabold text-sm">0</strong>
+            </div>
+        </div>
+
+        <!-- Heatmap Grid -->
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 overflow-x-auto">
+            <div id="share-grid-container" class="min-w-[700px]"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const token = "{{ token }}";
+        
+        // Exact 5-stop color gradient from main.py
+        function hexToRgb(hex) {
+            const c = hex.replace("#", "");
+            return [
+                parseInt(c.substring(0, 2), 16),
+                parseInt(c.substring(2, 4), 16),
+                parseInt(c.substring(4, 6), 16)
+            ];
+        }
+
+        function interpolateColors(color1, color2, factor) {
+            const rgb1 = hexToRgb(color1);
+            const rgb2 = hexToRgb(color2);
+            const r = Math.round(rgb1[0] + factor * (rgb2[0] - rgb1[0]));
+            const g = Math.round(rgb1[1] + factor * (rgb2[1] - rgb1[1]));
+            const b = Math.round(rgb1[2] + factor * (rgb2[2] - rgb1[2]));
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        function getAvailabilityColor(freeCount, totalCount) {
+            if (totalCount === 0) return "#3fb950";
+            const fraction = Math.max(0, Math.min(1, freeCount / totalCount));
+            const stops = [
+                { pos: 0.0, color: "#e04b4b" },
+                { pos: 0.25, color: "#f2a93c" },
+                { pos: 0.50, color: "#f5d76e" },
+                { pos: 0.75, color: "#8fd35c" },
+                { pos: 1.0, color: "#3fb950" }
+            ];
+            for (let i = 0; i < stops.length - 1; i++) {
+                if (fraction >= stops[i].pos && fraction <= stops[i + 1].pos) {
+                    const range = stops[i + 1].pos - stops[i].pos;
+                    const factor = (fraction - stops[i].pos) / range;
+                    return interpolateColors(stops[i].color, stops[i + 1].color, factor);
+                }
+            }
+            return "#3fb950";
+        }
+
+        async function loadSharedData() {
+            try {
+                const res = await fetch(`/api/share/${token}`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    document.getElementById("share-grid-container").innerHTML = `<div class="p-6 text-center text-rose-400 font-bold">${err.detail || 'Failed to load heatmap.'}</div>`;
+                    return;
+                }
+                const data = await res.json();
+                document.getElementById("share-title").textContent = data.title;
+                renderSharedHeatmap(data.heatmap);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderSharedHeatmap(data) {
+            document.getElementById("share-free-count").textContent = data.best_slots.length;
+            
+            const partContainer = document.getElementById("share-participants-list");
+            partContainer.innerHTML = "";
+            data.users.forEach(u => {
+                const badge = document.createElement("span");
+                badge.className = "inline-flex items-center space-x-1.5 px-2.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-xs font-medium text-slate-300";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background-color:${u.avatar_color || '#2563eb'}"></span><span>${u.full_name}</span>`;
+                partContainer.appendChild(badge);
+            });
+
+            const container = document.getElementById("share-grid-container");
+            container.innerHTML = "";
+
+            const table = document.createElement("table");
+            table.className = "w-full border-collapse text-center table-fixed text-xs";
+
+            let headerHtml = `<tr class="bg-slate-900 text-slate-300 font-bold border-b border-slate-800"><th class="py-2.5 px-2 w-20 text-left uppercase text-slate-400">Day</th>`;
+            data.time_slots.forEach((tLabel, tIdx) => {
+                headerHtml += `<th class="py-2.5 px-1 font-bold text-slate-300 border-l border-slate-800">${tLabel}</th>`;
+            });
+            headerHtml += `</tr>`;
+            table.innerHTML = `<thead>${headerHtml}</thead>`;
+
+            const tbody = document.createElement("tbody");
+            data.grid.forEach((dayRow, dayIdx) => {
+                const tr = document.createElement("tr");
+                tr.className = "border-b border-slate-800/80";
+                let rowHtml = `<td class="py-2.5 px-2 font-bold text-slate-300 bg-slate-900/90 text-left border-r border-slate-800 uppercase">${data.days[dayIdx]}</td>`;
+
+                dayRow.forEach(cell => {
+                    if (cell.is_lunch) {
+                        rowHtml += `<td class="py-2 px-1 cell-lunch border-r border-slate-800 text-slate-500 font-medium">Lunch</td>`;
+                    } else {
+                        const total = cell.total_users;
+                        const free = cell.free_count;
+                        const busy = cell.busy_users;
+                        const bgFraction = total > 0 ? (free / total) : 0;
+                        const bgColor = getAvailabilityColor(free, total);
+                        const textColor = (bgFraction < 0.3 || bgFraction > 0.85) ? "#ffffff" : "#111827";
+
+                        let subText = "all free";
+                        if (!busy || busy.length === 0) subText = "all free";
+                        else if (busy.length === total) subText = "all busy";
+                        else subText = busy.map(u => u.full_name).join(", ");
+
+                        rowHtml += `<td class="py-2 px-1 heatmap-cell border-r border-slate-800" style="background-color: ${bgColor}; color: ${textColor};">
+                            <div class="font-extrabold text-sm leading-tight">${free}/${total}</div>
+                            <div class="text-[10px] font-medium truncate px-1 opacity-95">${subText}</div>
+                        </td>`;
+                    }
+                });
+
+                tr.innerHTML = rowHtml;
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            container.appendChild(table);
+        }
+
+        window.addEventListener("DOMContentLoaded", loadSharedData);
+    </script>
+</body>
+</html>

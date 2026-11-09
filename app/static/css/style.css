@@ -1,0 +1,186 @@
+/* ==============================================================================
+   ScheduleSync - Modern Dark & Clean Theme
+   Accent: Blue (#2563eb) | Background: Slate Dark (#0b0f19)
+   ============================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-light: rgba(37, 99, 235, 0.15);
+    --bg-dark: #0b0f19;
+    --card-dark: #111827;
+    --card-border: #1e293b;
+    --card-hover: #162032;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --color-free: #3fb950;
+    --color-busy: #e04b4b;
+    --color-partial: #f5d76e;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glassmorphism & Surface Cards */
+.glass-header {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+}
+
+.clean-card {
+    background-color: var(--card-dark);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.clean-card:hover {
+    border-color: rgba(71, 85, 105, 0.7);
+}
+
+/* Heatmap Grid Cell Styles (Faithful 5-stop Matplotlib Style) */
+.heatmap-cell {
+    transition: transform 0.12s ease, box-shadow 0.12s ease, outline 0.12s ease;
+    position: relative;
+    cursor: pointer;
+    border: 1.5px solid rgba(15, 23, 42, 0.85);
+    border-radius: 6px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.heatmap-cell:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    z-index: 20;
+    outline: 2px solid #ffffff;
+}
+
+.cell-lunch {
+    background-color: #1e293b !important;
+    color: #64748b !important;
+    cursor: default;
+    border: 1.5px solid #0f172a;
+    border-radius: 6px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    font-weight: 800;
+}
+
+.cell-lunch:hover {
+    transform: rotate(180deg) !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Interactive Timetable Slot Editor */
+.slot-editable {
+    transition: all 0.15s ease;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.slot-editable.is-busy {
+    background-color: rgba(224, 75, 75, 0.18);
+    border: 1px solid rgba(224, 75, 75, 0.6);
+    color: #fca5a5;
+}
+
+.slot-editable.is-busy:hover {
+    background-color: rgba(224, 75, 75, 0.32);
+    border-color: #e04b4b;
+    transform: translateY(-1px);
+}
+
+.slot-editable.is-free {
+    background-color: rgba(63, 185, 80, 0.15);
+    border: 1px solid rgba(63, 185, 80, 0.5);
+    color: #86efac;
+}
+
+.slot-editable.is-free:hover {
+    background-color: rgba(63, 185, 80, 0.28);
+    border-color: #3fb950;
+    transform: translateY(-1px);
+}
+
+/* Clean Chips & Participant Pills */
+.participant-pill {
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.participant-pill.active {
+    background-color: rgba(37, 99, 235, 0.2);
+    border-color: rgba(59, 130, 246, 0.6);
+    color: #93c5fd;
+}
+
+.participant-pill:hover {
+    border-color: rgba(96, 165, 250, 0.8);
+}
+
+/* Buttons & Micro-Interactions */
+.btn-primary {
+    background-color: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+/* Custom Minimal Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+    background: #273549;
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3b4d66;
+}
+
+/* Toast Container & Animations */
+#toast-container {
+    pointer-events: none;
+}
+
+#toast-container > * {
+    pointer-events: auto;
+}

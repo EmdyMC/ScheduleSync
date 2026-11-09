@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScheduleSync - Academic Timetable Aggregator & Common Free Time Analyzer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        primaryHover: '#1d4ed8',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-[#0b0f19] text-slate-100 antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2"></div>
+
+    <!-- ====================================================================== -->
+    <!-- AUTHENTICATION SCREEN (Shown when logged out) -->
+    <!-- ====================================================================== -->
+    <div id="auth-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 hidden">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-800">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-600 text-white rounded-xl shadow-lg text-xl font-black mb-3">
+                    SS
+                </div>
+                <h2 class="text-2xl font-bold text-white tracking-tight">ScheduleSync</h2>
+                <p class="text-xs text-slate-400 mt-1">Academic Timetable Aggregator & Free Time Analyzer</p>
+            </div>
+
+            <!-- Login / Register Switcher -->
+            <div class="flex bg-slate-950 p-1 rounded-lg mb-6 text-xs font-semibold border border-slate-800">
+                <button id="auth-tab-btn-login" onclick="toggleAuthForm('login')" class="flex-1 py-2 rounded bg-blue-600 text-white transition-all">Log In</button>
+                <button id="auth-tab-btn-register" onclick="toggleAuthForm('register')" class="flex-1 py-2 rounded text-slate-400 hover:text-white transition-all">Sign Up</button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form id="login-form" onsubmit="event.preventDefault(); handleLogin(document.getElementById('login-identifier').value, document.getElementById('login-password').value);">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Username or Email</label>
+                        <input id="login-identifier" type="text" required placeholder="Enter username or email" class="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                        <input id="login-password" type="password" required placeholder="Enter password" class="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow">
+                        Log In
+                    </button>
+                </div>
+            </form>
+
+            <!-- REGISTER FORM -->
+            <form id="register-form" class="hidden" onsubmit="event.preventDefault(); handleRegister({
+                username: document.getElementById('reg-username').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-password').value,
+                full_name: document.getElementById('reg-name').value,
+                reg_no: document.getElementById('reg-no').value,
+                campus: document.getElementById('reg-campus').value
+            });">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-0.5">Full Name</label>
+                        <input id="reg-name" type="text" required placeholder="Your full name" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-0.5">Username</label>
+                            <input id="reg-username" type="text" required placeholder="Choose username" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-0.5">Registration Number</label>
+                            <input id="reg-no" type="text" required placeholder="e.g. 24BCE5259" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-0.5">Email</label>
+                        <input id="reg-email" type="email" required placeholder="name@domain.edu" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-0.5">Campus</label>
+                            <select id="reg-campus" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="VIT Chennai">VIT Chennai</option>
+                                <option value="VIT AP">VIT AP</option>
+                                <option value="VIT Bhopal">VIT Bhopal</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 uppercase mb-0.5">Password</label>
+                            <input id="reg-password" type="password" required placeholder="Choose password" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow mt-2">
+                        Create Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- MAIN APPLICATION DASHBOARD -->
+    <!-- ====================================================================== -->
+    <div id="app-dashboard" class="flex-1 flex flex-col hidden">
+        
+        <!-- TOP NAVIGATION BAR -->
+        <header class="glass-header sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+                
+                <!-- Logo & Brand -->
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-black text-sm shadow">
+                        SS
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-extrabold text-white tracking-tight leading-none">ScheduleSync</h1>
+                        <p class="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Availability Analyzer</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex items-center space-x-1 text-xs">
+                    <button id="nav-tab-heatmap" onclick="switchTab('heatmap')" class="px-3.5 py-2 rounded-lg font-bold bg-blue-600 text-white shadow">
+                        Heatmap
+                    </button>
+                    <button id="nav-tab-timetable" onclick="switchTab('timetable')" class="px-3.5 py-2 rounded-lg font-medium text-slate-300 hover:text-white hover:bg-slate-800">
+                        My Schedule
+                    </button>
+                    <button id="nav-tab-friends" onclick="switchTab('friends')" class="px-3.5 py-2 rounded-lg font-medium text-slate-300 hover:text-white hover:bg-slate-800">
+                        Friends
+                    </button>
+                    <button id="nav-tab-groups" onclick="switchTab('groups')" class="px-3.5 py-2 rounded-lg font-medium text-slate-300 hover:text-white hover:bg-slate-800">
+                        Groups
+                    </button>
+                </nav>
+
+                <!-- User Profile & Action Tools -->
+                <div class="flex items-center space-x-2.5">
+                    <a href="/docs" target="_blank" class="hidden sm:inline-flex items-center px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors border border-slate-700/60" title="API Documentation">
+                        API Docs
+                    </a>
+
+                    <div class="flex items-center space-x-2 pl-2 border-l border-slate-800">
+                        <div id="user-avatar-badge" class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-white text-xs" style="background-color: #2563eb;">
+                            U
+                        </div>
+                        <div class="hidden sm:block text-left">
+                            <div id="user-name-display" class="text-xs font-bold text-slate-200 leading-tight">Student</div>
+                            <div id="user-reg-display" class="text-[10px] text-slate-400 font-mono"></div>
+                        </div>
+                        <button onclick="handleLogout()" class="p-1.5 text-slate-400 hover:text-rose-400 transition-colors" title="Log Out">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Mobile Navigation -->
+            <div class="md:hidden flex border-t border-slate-800 bg-slate-900 overflow-x-auto text-xs py-1 px-2 space-x-1">
+                <button onclick="switchTab('heatmap')" class="px-2.5 py-1 rounded font-bold bg-blue-600/30 text-blue-400">Heatmap</button>
+                <button onclick="switchTab('timetable')" class="px-2.5 py-1 rounded text-slate-400">Schedule</button>
+                <button onclick="switchTab('friends')" class="px-2.5 py-1 rounded text-slate-400">Friends</button>
+                <button onclick="switchTab('groups')" class="px-2.5 py-1 rounded text-slate-400">Groups</button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-5">
+
+            <!-- ============================================================== -->
+            <!-- TAB 1: HEATMAP -->
+            <!-- ============================================================== -->
+            <section id="tab-content-heatmap" class="space-y-5">
+                
+                <!-- Controls & Comparison Selector -->
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div class="space-y-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="heatmap-group-select" onchange="onGroupSelectChange()" class="px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-950">
+                                <option value="">Select Group</option>
+                            </select>
+                            <span class="text-xs text-slate-500 font-semibold uppercase">or friends:</span>
+                            <button onclick="selectAllFriends()" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-medium transition-colors">Select All</button>
+                            <button onclick="clearAllFriends()" class="px-2 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-400 rounded font-medium transition-colors">Clear</button>
+                        </div>
+
+                        <!-- Multi-select Friends Checklist -->
+                        <div id="heatmap-friends-checklist" class="flex flex-wrap gap-1.5 items-center">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center space-x-2">
+                        <button onclick="handleCreateShareLink()" class="px-3 py-1.5 bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5">
+                            <span>Share Link</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Metrics (Schedule Count) -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800">
+                        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Schedule Count</div>
+                        <div id="stat-total-people" class="text-2xl font-black text-white mt-1">0</div>
+                    </div>
+                    <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800">
+                        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">100% Free Slots</div>
+                        <div id="stat-free-slots" class="text-2xl font-black text-emerald-400 mt-1">0</div>
+                    </div>
+                    <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 col-span-2">
+                        <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Active Participants</div>
+                        <div id="heatmap-participants-list" class="flex flex-wrap gap-1 items-center">
+                            <!-- Participant pills -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Best Meeting Slots Recommendations -->
+                <div id="heatmap-best-slots-banner" class="bg-emerald-950/40 border border-emerald-800/80 p-3.5 rounded-xl hidden">
+                    <div class="flex items-center space-x-2 mb-1.5">
+                        <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wide">Common Free Slots (100% Free)</h4>
+                    </div>
+                    <div id="heatmap-best-slots-list" class="flex flex-wrap items-center"></div>
+                </div>
+
+                <!-- Heatmap Grid -->
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 overflow-x-auto">
+                    <div class="flex items-center justify-between mb-3 px-1">
+                        <div class="text-xs font-bold text-slate-300 uppercase tracking-wider">Group Availability Heatmap</div>
+                        <div class="flex items-center space-x-3 text-[10px] font-medium text-slate-400">
+                            <span class="flex items-center space-x-1"><span class="w-3 h-3 rounded" style="background-color: #3fb950;"></span><span>Free</span></span>
+                            <span class="flex items-center space-x-1"><span class="w-3 h-3 rounded" style="background-color: #f5d76e;"></span><span>Partial</span></span>
+                            <span class="flex items-center space-x-1"><span class="w-3 h-3 rounded" style="background-color: #e04b4b;"></span><span>Busy</span></span>
+                        </div>
+                    </div>
+                    <div id="heatmap-matrix-grid"></div>
+                </div>
+
+            </section>
+
+            <!-- ============================================================== -->
+            <!-- TAB 2: MY TIMETABLE & OCR -->
+            <!-- ============================================================== -->
+            <section id="tab-content-timetable" class="space-y-5 hidden">
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Academic Schedule Editor</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Toggle slots manually or upload a timetable screenshot.</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="px-3 py-1.5 bg-blue-600/20 border border-blue-500/40 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center space-x-1.5">
+                            <span>Upload Screenshot</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handleOcrUpload(this)">
+                        </label>
+                        <button onclick="setAllTimetableSlots(false)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-xs font-semibold transition-colors">
+                            Mark All Free
+                        </button>
+                        <button onclick="setAllTimetableSlots(true)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-lg text-xs font-semibold transition-colors">
+                            Mark All Busy
+                        </button>
+                        <button onclick="saveTimetableSlots()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+
+                <div id="ocr-status-indicator" class="bg-slate-900 border border-blue-900 p-3 rounded-lg hidden"></div>
+
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 overflow-x-auto">
+                    <div id="timetable-editor-grid"></div>
+                </div>
+            </section>
+
+            <!-- ============================================================== -->
+            <!-- TAB 3: FRIENDS NETWORK -->
+            <!-- ============================================================== -->
+            <section id="tab-content-friends" class="space-y-5 hidden">
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Search Students</label>
+                    <input type="text" oninput="onFriendSearchInput(this.value)" placeholder="Search by name, username, or registration number..." class="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div id="search-results-list" class="mt-2.5 space-y-1.5"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Incoming Requests</h4>
+                        <div id="incoming-requests-list" class="space-y-2"></div>
+                    </div>
+
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3 md:col-span-2">
+                        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Connected Friends</h4>
+                        <div id="accepted-friends-list" class="space-y-2"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================================== -->
+            <!-- TAB 4: GROUPS -->
+            <!-- ============================================================== -->
+            <section id="tab-content-groups" class="space-y-5 hidden">
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Project Teams & Study Groups</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Manage study circles, project teams, and lab partners.</p>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <div class="flex items-center bg-slate-950 border border-slate-700 rounded-lg overflow-hidden p-0.5">
+                            <input id="join-group-input" type="text" placeholder="Invite Code" class="px-2.5 py-1 text-xs bg-transparent text-slate-200 focus:outline-none uppercase font-mono w-32">
+                            <button onclick="handleJoinGroup(document.getElementById('join-group-input').value)" class="px-2.5 py-1 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 transition-colors">Join</button>
+                        </div>
+                        <button onclick="document.getElementById('create-group-modal').classList.remove('hidden')" class="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow">
+                            + Create Group
+                        </button>
+                    </div>
+                </div>
+
+                <div id="groups-card-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- MODALS -->
+    <!-- ====================================================================== -->
+
+    <!-- Slot Detail Breakdown Modal -->
+    <div id="slot-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 hidden">
+        <div class="bg-slate-900 rounded-xl max-w-md w-full p-5 shadow-2xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div>
+                    <h3 id="modal-slot-title" class="text-sm font-bold text-white">Slot Details</h3>
+                    <p id="modal-slot-ratio" class="text-xs text-blue-400 font-semibold mt-0.5"></p>
+                </div>
+                <button onclick="closeSlotDetailModal()" class="w-7 h-7 rounded bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold text-sm">&times;</button>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <h5 class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Available Students:</h5>
+                    <ul id="modal-free-list" class="space-y-1 max-h-36 overflow-y-auto"></ul>
+                </div>
+                <div>
+                    <h5 class="text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-1">Busy Students (Classes):</h5>
+                    <ul id="modal-busy-list" class="space-y-1 max-h-36 overflow-y-auto"></ul>
+                </div>
+            </div>
+
+            <button onclick="closeSlotDetailModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-semibold transition-colors mt-2">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div id="create-group-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 hidden">
+        <div class="bg-slate-900 rounded-xl max-w-md w-full p-5 shadow-2xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                <h3 class="text-sm font-bold text-white">Create Group</h3>
+                <button onclick="document.getElementById('create-group-modal').classList.add('hidden')" class="w-7 h-7 rounded bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold text-sm">&times;</button>
+            </div>
+
+            <form onsubmit="event.preventDefault(); handleCreateGroup(document.getElementById('new-group-name').value, document.getElementById('new-group-desc').value);" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Group Name</label>
+                    <input id="new-group-name" type="text" required placeholder="Group name" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Description (Optional)</label>
+                    <textarea id="new-group-desc" rows="2" placeholder="Purpose of group..." class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+                </div>
+                <div class="pt-1 flex items-center space-x-2">
+                    <button type="button" onclick="document.getElementById('create-group-modal').classList.add('hidden')" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-semibold">Cancel</button>
+                    <button type="submit" class="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toggle Login/Register tab -->
+    <script>
+        function toggleAuthForm(mode) {
+            const loginForm = document.getElementById('login-form');
+            const regForm = document.getElementById('register-form');
+            const loginBtn = document.getElementById('auth-tab-btn-login');
+            const regBtn = document.getElementById('auth-tab-btn-register');
+
+            if (mode === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                loginBtn.className = "flex-1 py-2 rounded bg-blue-600 text-white transition-all";
+                regBtn.className = "flex-1 py-2 rounded text-slate-400 hover:text-white transition-all";
+            } else {
+                loginForm.classList.add('hidden');
+                regForm.classList.remove('hidden');
+                regBtn.className = "flex-1 py-2 rounded bg-blue-600 text-white transition-all";
+                loginBtn.className = "flex-1 py-2 rounded text-slate-400 hover:text-white transition-all";
+            }
+        }
+    </script>
+
+    <!-- App JavaScript -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
